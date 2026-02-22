@@ -10,7 +10,8 @@
     "build": "tsc",
     "start": "node dist/index.js",
     "dev": "tsx src/index.ts",
-    "test": "tsx --test \"src/**/*.test.ts\""
+    "test": "tsx --test \"src/**/*.test.ts\"",
+    "prepare": "lefthook install"
   },
   "keywords": [
     "cli",
@@ -29,6 +30,7 @@
   },
   "devDependencies": {
     "@types/node": "^22.13.10",
+    "lefthook": "^1.11.13",
     "tsx": "^4.19.3",
     "typescript": "^5.8.2"
   }
