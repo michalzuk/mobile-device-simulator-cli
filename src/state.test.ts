@@ -22,7 +22,7 @@ const defaultState = {
   iosFilterQuery: "",
   androidFilterQuery: "",
   filterActive: false,
-  statusMessage: "Use Up/Down + Enter. Esc/Backspace returns to main menu. Press q to exit.",
+  statusMessage: "Use Up/Down + Enter. Esc/Backspace returns to main menu. Press Ctrl+C to exit.",
   busy: false,
   iosSimulators: [],
   androidAvds: [],

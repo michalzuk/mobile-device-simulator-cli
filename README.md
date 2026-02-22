@@ -47,7 +47,7 @@ npm start
 - `f`: toggle filter mode (iOS/Android list screens)
 - `Backspace`: clear filter char (in filter mode) or go back
 - `Esc`: exit filter mode or return to main menu
-- `q` or `Ctrl+C`: exit
+- `Ctrl+C`: exit
 
 ## Testing
 

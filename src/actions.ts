@@ -38,7 +38,6 @@ function runBusyAction(action: () => void): void {
     backToMainMenu(error instanceof Error ? error.message : String(error));
   } finally {
     appState.busy = false;
-    render();
   }
 }
 
@@ -186,8 +185,9 @@ function handleFilterInput(input: string | undefined, key: readline.Key): boolea
     if (query.length > 0) {
       setCurrentFilterQuery(query.slice(0, -1));
       normalizeSelection();
+      return true;
     }
-    return true;
+    return false;
   }
 
   if (key.name === "escape") {
@@ -229,11 +229,6 @@ export function startCli(): void {
 
   process.stdin.on("keypress", (input: string | undefined, key: readline.Key) => {
     if (key.ctrl && key.name === "c") {
-      cleanupAndExit(0);
-      return;
-    }
-
-    if (key.name === "q") {
       cleanupAndExit(0);
       return;
     }

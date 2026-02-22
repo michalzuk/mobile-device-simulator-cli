@@ -20,6 +20,11 @@ export function parseRunningEmulatorSerials(adbDevicesOutput: string): string[] 
     .filter((serial): serial is string => typeof serial === "string" && serial.length > 0);
 }
 
+export function parseAvdNameFromAdbLine(line: string): string {
+  const match = line.match(/\bavd:([^\s]+)/);
+  return match?.[1] ?? "";
+}
+
 export function parseAvdNameFromEmulatorOutput(rawOutput: string): string {
   const line = rawOutput
     .split("\n")
@@ -32,8 +37,21 @@ export function parseAvdNameFromEmulatorOutput(rawOutput: string): string {
 export function listBootedAndroidAvds(commandRunner: CommandRunner = runCommand): string[] {
   try {
     const devicesOutput = commandRunner("adb", ["devices", "-l"]);
-    const serials = parseRunningEmulatorSerials(devicesOutput);
+    const deviceLines = devicesOutput
+      .split("\n")
+      .map((line) => line.trim())
+      .filter((line) => /^emulator-\d+\s+device\b/.test(line));
+
+    const directNames = deviceLines.map(parseAvdNameFromAdbLine).filter((name) => name.length > 0);
+    const unresolvedSerials = deviceLines
+      .filter((line) => parseAvdNameFromAdbLine(line).length === 0)
+      .map((line) => line.split(/\s+/)[0])
+      .filter((serial): serial is string => typeof serial === "string" && serial.length > 0);
+
+    const serials = unresolvedSerials.length > 0 ? unresolvedSerials : parseRunningEmulatorSerials(devicesOutput);
     const avdNames: string[] = [];
+
+    avdNames.push(...directNames);
 
     serials.forEach((serial) => {
       try {

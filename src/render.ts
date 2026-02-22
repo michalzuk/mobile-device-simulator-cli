@@ -96,7 +96,7 @@ function renderFooterStatus(): void {
     keys.push(`${paint("Esc/Backspace", "cyan")} back`);
   }
 
-  keys.push(`${paint("q", "cyan")} quit`, `${paint("Ctrl+C", "cyan")} quit`);
+  keys.push(`${paint("Ctrl+C", "cyan")} quit`);
 
   process.stdout.write(`${paint("Keys", "dim")}: ${keys.join(" · ")}\n`);
 }

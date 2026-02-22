@@ -2,7 +2,13 @@ import assert from "node:assert/strict";
 import { describe, test } from "node:test";
 
 import { formatBootedIosDevices, getActiveDevices, toDeviceStatus } from "./active.js";
-import { listBootedAndroidAvds, parseAndroidAvdList, parseAvdNameFromEmulatorOutput, parseRunningEmulatorSerials } from "./android.js";
+import {
+  listBootedAndroidAvds,
+  parseAndroidAvdList,
+  parseAvdNameFromAdbLine,
+  parseAvdNameFromEmulatorOutput,
+  parseRunningEmulatorSerials
+} from "./android.js";
 import { toIosSimulators } from "./ios.js";
 
 describe("devices parsing", () => {
@@ -70,6 +76,11 @@ describe("devices parsing", () => {
     assert.equal(parseAvdNameFromEmulatorOutput("Pixel_8_API_35\nOK\n"), "Pixel_8_API_35");
   });
 
+  test("parseAvdNameFromAdbLine reads avd field", () => {
+    const line = "emulator-5554 device product:sdk_gphone64 model:sdk_gphone64 avd:Pixel_8_API_35";
+    assert.equal(parseAvdNameFromAdbLine(line), "Pixel_8_API_35");
+  });
+
   test("listBootedAndroidAvds resolves booted emulator names", () => {
     const commandRunner = (_command: string, args: string[]): string => {
       if (args[0] === "devices") {
@@ -92,6 +103,21 @@ describe("devices parsing", () => {
     };
 
     assert.deepEqual(listBootedAndroidAvds(commandRunner), ["Pixel_8_API_35", "Pixel_7_API_34"]);
+  });
+
+  test("listBootedAndroidAvds prefers avd names from adb -l lines", () => {
+    const commandRunner = (_command: string, args: string[]): string => {
+      if (args[0] === "devices") {
+        return [
+          "List of devices attached",
+          "emulator-5554 device product:sdk_gphone_x86_64 avd:Pixel_8_API_35"
+        ].join("\n");
+      }
+
+      throw new Error("fallback query should not run");
+    };
+
+    assert.deepEqual(listBootedAndroidAvds(commandRunner), ["Pixel_8_API_35"]);
   });
 });
 
