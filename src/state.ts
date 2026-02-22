@@ -21,6 +21,59 @@ export const appState: AppState = {
   }
 };
 
+export function parseActiveIosRows(text: string): string[] {
+  const trimmed = text.trim();
+  if (trimmed.length === 0) {
+    return [];
+  }
+
+  const lines = trimmed
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean);
+
+  if (lines.length === 1) {
+    const only = lines[0] ?? "";
+    if (only.startsWith("No booted iOS simulators.") || only.startsWith("Unable to read iOS simulator state")) {
+      return [];
+    }
+  }
+
+  return lines;
+}
+
+export function parseActiveAndroidRows(text: string): string[] {
+  const trimmed = text.trim();
+  if (trimmed.length === 0) {
+    return [];
+  }
+
+  if (trimmed.startsWith("No connected Android devices.") || trimmed.startsWith("Unable to read Android device state")) {
+    return [];
+  }
+
+  const lines = trimmed
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean);
+
+  const withoutHeader = lines[0]?.startsWith("List of devices") ? lines.slice(1) : lines;
+  return withoutHeader
+    .filter((line) => {
+      const parts = line.split(/\s+/);
+      return parts[1] === "device";
+    })
+    .map((line) => line);
+}
+
+export function getActiveIosRows(): string[] {
+  return parseActiveIosRows(appState.activeDevices.ios);
+}
+
+export function getActiveAndroidRows(): string[] {
+  return parseActiveAndroidRows(appState.activeDevices.android);
+}
+
 function partitionByIds<T>(
   items: T[],
   getId: (item: T) => string,

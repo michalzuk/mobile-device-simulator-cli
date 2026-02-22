@@ -6,7 +6,7 @@ Interactive TypeScript CLI for launching iOS simulators and Android emulators fr
 
 - Launch available iOS simulators via `xcrun simctl`
 - Launch available Android AVDs via `emulator -list-avds`
-- View active iOS and Android devices in one screen
+- View active iOS and Android devices on the main screen
 - Keyboard-first navigation (arrow keys, enter, filter mode)
 - Pre-push safety check with `lefthook` running `npm test`
 

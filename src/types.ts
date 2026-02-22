@@ -1,6 +1,6 @@
-export type MainAction = "launch-ios-simulator" | "launch-android-emulator" | "active-devices" | "exit";
+export type MainAction = "launch-ios-simulator" | "launch-android-emulator" | "exit";
 
-export type Screen = "main" | "ios" | "android" | "devices";
+export type Screen = "main" | "ios" | "android";
 
 export type MainMenuItem = {
   label: string;

@@ -10,6 +10,8 @@ import {
   appState,
   backToMainMenu,
   clampIndex,
+  getActiveAndroidRows,
+  getActiveIosRows,
   getCurrentFilterQuery,
   getVisibleAndroidAvds,
   getVisibleIosSimulators,
@@ -17,9 +19,50 @@ import {
   setCurrentFilterQuery
 } from "./state.js";
 
+function getMainSelection():
+  | { kind: "action"; action: "launch-ios-simulator" | "launch-android-emulator" }
+  | { kind: "active-ios"; row: string }
+  | { kind: "active-android"; row: string }
+  | { kind: "exit" } {
+  const actionItems = mainMenuItems.filter((item) => item.value !== "exit");
+  const exitIndex = actionItems.length + getActiveIosRows().length + getActiveAndroidRows().length;
+
+  if (appState.mainIndex < actionItems.length) {
+    const selected = actionItems[appState.mainIndex];
+    if (selected?.value === "launch-ios-simulator" || selected?.value === "launch-android-emulator") {
+      return { kind: "action", action: selected.value };
+    }
+  }
+
+  const iosStart = actionItems.length;
+  const iosRows = getActiveIosRows();
+  const iosEnd = iosStart + iosRows.length;
+  if (appState.mainIndex >= iosStart && appState.mainIndex < iosEnd) {
+    return { kind: "active-ios", row: iosRows[appState.mainIndex - iosStart] ?? "" };
+  }
+
+  const androidStart = iosEnd;
+  const androidRows = getActiveAndroidRows();
+  const androidEnd = androidStart + androidRows.length;
+  if (appState.mainIndex >= androidStart && appState.mainIndex < androidEnd) {
+    return { kind: "active-android", row: androidRows[appState.mainIndex - androidStart] ?? "" };
+  }
+
+  if (appState.mainIndex === exitIndex) {
+    return { kind: "exit" };
+  }
+
+  return { kind: "action", action: "launch-ios-simulator" };
+}
+
+function getMainSelectableCount(): number {
+  const actionItems = mainMenuItems.filter((item) => item.value !== "exit");
+  return actionItems.length + getActiveIosRows().length + getActiveAndroidRows().length + 1;
+}
+
 function moveSelection(step: number): void {
   if (appState.screen === "main") {
-    appState.mainIndex = clampIndex(appState.mainIndex + step, mainMenuItems.length);
+    appState.mainIndex = clampIndex(appState.mainIndex + step, getMainSelectableCount());
   } else if (appState.screen === "ios") {
     const visible = getVisibleIosSimulators();
     appState.iosIndex = clampIndex(appState.iosIndex + step, visible.length);
@@ -50,9 +93,9 @@ function persistRecentHistory(): void {
 
 function handleEnter(): void {
   if (appState.screen === "main") {
-    const selected = mainMenuItems[appState.mainIndex];
+    const selection = getMainSelection();
 
-    if (selected.value === "launch-ios-simulator") {
+    if (selection.kind === "action" && selection.action === "launch-ios-simulator") {
       runBusyAction(() => {
         const simulators = listIosSimulators();
         if (simulators.length === 0) {
@@ -69,7 +112,7 @@ function handleEnter(): void {
       return;
     }
 
-    if (selected.value === "launch-android-emulator") {
+    if (selection.kind === "action" && selection.action === "launch-android-emulator") {
       runBusyAction(() => {
         const avds = listAndroidAvds();
         if (avds.length === 0) {
@@ -87,12 +130,13 @@ function handleEnter(): void {
       return;
     }
 
-    if (selected.value === "active-devices") {
-      runBusyAction(() => {
-        appState.activeDevices = getActiveDevices();
-        appState.screen = "devices";
-        appState.statusMessage = "Showing currently active devices.";
-      });
+    if (selection.kind === "active-ios" || selection.kind === "active-android") {
+      appState.statusMessage = "Active devices are informational.";
+      return;
+    }
+
+    if (selection.kind === "exit") {
+      cleanupAndExit(0);
       return;
     }
 
@@ -117,6 +161,7 @@ function handleEnter(): void {
       launchIosSimulator(selectedDevice.udid);
       appState.recentIosUdids = pushRecentIosUdid(selectedDevice.udid, appState.recentIosUdids);
       persistRecentHistory();
+      appState.activeDevices = getActiveDevices();
       backToMainMenu(`iOS Simulator launch requested for ${selectedDevice.name}.`);
     });
     return;
@@ -139,6 +184,7 @@ function handleEnter(): void {
       launchAndroidEmulator(selectedAvd);
       appState.recentAndroidAvdNames = pushRecentAndroidAvdName(selectedAvd, appState.recentAndroidAvdNames);
       persistRecentHistory();
+      appState.activeDevices = getActiveDevices();
       backToMainMenu(`Android emulator launch requested for ${selectedAvd}.`);
     });
   }
@@ -226,6 +272,11 @@ export function startCli(): void {
   appState.recentAndroidAvdNames = history.recentAndroidAvdNames;
   process.stdin.setRawMode(true);
   process.stdout.write("\x1b[?25l");
+
+  runBusyAction(() => {
+    appState.activeDevices = getActiveDevices();
+  });
+  render();
 
   process.stdin.on("keypress", (input: string | undefined, key: readline.Key) => {
     if (key.ctrl && key.name === "c") {

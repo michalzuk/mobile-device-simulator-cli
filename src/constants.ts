@@ -32,11 +32,6 @@ export const mainMenuItems: MainMenuItem[] = [
     description: "Select and start an Android AVD"
   },
   {
-    label: "Active devices",
-    value: "active-devices",
-    description: "Show booted simulators and connected devices"
-  },
-  {
     label: "Exit",
     value: "exit",
     description: "Close CLI"

@@ -1,6 +1,9 @@
 import { icons, mainMenuItems, paint } from "./constants.js";
 import {
   appState,
+  clampIndex,
+  getActiveAndroidRows,
+  getActiveIosRows,
   getCurrentFilterQuery,
   getVisibleAndroidAvdGroups,
   getVisibleAndroidAvds,
@@ -95,10 +98,6 @@ function renderFooterStatus(): void {
     }
   }
 
-  if (appState.screen === "devices") {
-    keys.push(`${paint("Esc/Backspace", "cyan")} back`);
-  }
-
   keys.push(`${paint("Ctrl+C", "cyan")} quit`);
 
   process.stdout.write(`${paint("Keys", "dim")}: ${keys.join(" · ")}\n`);
@@ -109,13 +108,55 @@ export function render(): void {
   renderHeader();
 
   if (appState.screen === "main") {
-    renderSelectableList(
-      "Main Menu",
-      mainMenuItems.map((item) => `${item.label} - ${item.description}`),
-      appState.mainIndex,
-      "",
-      `${mainMenuItems.length} actions`
-    );
+    const actionItems = mainMenuItems.filter((item) => item.value !== "exit");
+    const exitItem = mainMenuItems.find((item) => item.value === "exit");
+    const iosRows = getActiveIosRows();
+    const androidRows = getActiveAndroidRows();
+    const totalRows = actionItems.length + iosRows.length + androidRows.length + 1;
+    appState.mainIndex = clampIndex(appState.mainIndex, totalRows);
+
+    sectionTitle("Main Menu", `${actionItems.length + 1} actions`);
+    actionItems.forEach((item, index) => {
+      const row = `${item.label} - ${item.description}`;
+      const marker = index === appState.mainIndex ? paint(">", "green") : paint("•", "dim");
+      const rowText = index === appState.mainIndex ? paint(row, "green") : row;
+      process.stdout.write(`${marker} ${rowText}\n`);
+    });
+
+    process.stdout.write("\n");
+    sectionTitle("Active Devices");
+
+    process.stdout.write(`${paint(`${icons.ios} iOS`, "magenta")}\n`);
+    if (iosRows.length === 0) {
+      process.stdout.write(`${paint("No booted iOS simulators.", "dim")}\n`);
+    } else {
+      iosRows.forEach((row, offset) => {
+        const index = actionItems.length + offset;
+        const marker = index === appState.mainIndex ? paint(">", "green") : paint("•", "dim");
+        const rowText = index === appState.mainIndex ? paint(row, "green") : row;
+        process.stdout.write(`${marker} ${rowText}\n`);
+      });
+    }
+
+    process.stdout.write("\n");
+    process.stdout.write(`${paint(`${icons.android} Android`, "green")}\n`);
+    if (androidRows.length === 0) {
+      process.stdout.write(`${paint("No connected Android devices.", "dim")}\n`);
+    } else {
+      androidRows.forEach((row, offset) => {
+        const index = actionItems.length + iosRows.length + offset;
+        const marker = index === appState.mainIndex ? paint(">", "green") : paint("•", "dim");
+        const rowText = index === appState.mainIndex ? paint(row, "green") : row;
+        process.stdout.write(`${marker} ${rowText}\n`);
+      });
+    }
+
+    process.stdout.write("\n");
+    const exitRow = `${exitItem?.label ?? "Exit"} - ${exitItem?.description ?? "Close CLI"}`;
+    const exitIndex = actionItems.length + iosRows.length + androidRows.length;
+    const exitMarker = exitIndex === appState.mainIndex ? paint(">", "green") : paint("•", "dim");
+    const exitText = exitIndex === appState.mainIndex ? paint(exitRow, "green") : exitRow;
+    process.stdout.write(`${exitMarker} ${exitText}\n`);
   } else if (appState.screen === "ios") {
     const visibleIos = getVisibleIosSimulators();
     const iosGroups = getVisibleIosSimulatorGroups();
@@ -182,12 +223,6 @@ export function render(): void {
         `${visibleAndroid.length} visible`
       );
     }
-  } else {
-    sectionTitle("Connected Devices", "live snapshot");
-    process.stdout.write(`${paint(`${icons.ios} iOS`, "magenta")}\n`);
-    process.stdout.write(`${appState.activeDevices.ios}\n\n`);
-    process.stdout.write(`${paint(`${icons.android} Android`, "green")}\n`);
-    process.stdout.write(`${appState.activeDevices.android}\n`);
   }
 
   renderFooterStatus();
