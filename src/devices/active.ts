@@ -3,21 +3,26 @@ import type { ActiveDevices } from "../types.js";
 
 const IOS_FALLBACK = "Unable to read iOS simulator state (xcrun not available).";
 const ANDROID_FALLBACK = "Unable to read Android device state (adb not available).";
+type CommandRunner = (command: string, args: string[]) => string;
 
-export function getActiveDevices(): ActiveDevices {
+export function toDeviceStatus(output: string, emptyMessage: string): string {
+  return output.length > 0 ? output : emptyMessage;
+}
+
+export function getActiveDevices(commandRunner: CommandRunner = runCommand): ActiveDevices {
   let ios = IOS_FALLBACK;
   let android = ANDROID_FALLBACK;
 
   try {
-    const iosOutput = runCommand("xcrun", ["simctl", "list", "devices", "booted"]);
-    ios = iosOutput.length > 0 ? iosOutput : "No booted iOS simulators.";
+    const iosOutput = commandRunner("xcrun", ["simctl", "list", "devices", "booted"]);
+    ios = toDeviceStatus(iosOutput, "No booted iOS simulators.");
   } catch {
     ios = IOS_FALLBACK;
   }
 
   try {
-    const androidOutput = runCommand("adb", ["devices", "-l"]);
-    android = androidOutput.length > 0 ? androidOutput : "No connected Android devices.";
+    const androidOutput = commandRunner("adb", ["devices", "-l"]);
+    android = toDeviceStatus(androidOutput, "No connected Android devices.");
   } catch {
     android = ANDROID_FALLBACK;
   }

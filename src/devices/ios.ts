@@ -3,10 +3,7 @@ import { spawn } from "node:child_process";
 import { runCommand } from "../command-runner.js";
 import type { IosSimulator, SimctlDevicesResponse } from "../types.js";
 
-export function listIosSimulators(): IosSimulator[] {
-  const raw = runCommand("xcrun", ["simctl", "list", "devices", "available", "--json"]);
-  const parsed = JSON.parse(raw) as SimctlDevicesResponse;
-
+export function toIosSimulators(parsed: SimctlDevicesResponse): IosSimulator[] {
   return Object.entries(parsed.devices).flatMap(([runtime, devices]) =>
     devices.map((device) => ({
       udid: device.udid,
@@ -15,6 +12,12 @@ export function listIosSimulators(): IosSimulator[] {
       runtime: runtime.replace("com.apple.CoreSimulator.SimRuntime.", "")
     }))
   );
+}
+
+export function listIosSimulators(): IosSimulator[] {
+  const raw = runCommand("xcrun", ["simctl", "list", "devices", "available", "--json"]);
+  const parsed = JSON.parse(raw) as SimctlDevicesResponse;
+  return toIosSimulators(parsed);
 }
 
 export function launchIosSimulator(udid: string): void {

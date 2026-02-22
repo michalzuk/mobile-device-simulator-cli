@@ -2,12 +2,16 @@ import { spawn } from "node:child_process";
 
 import { runCommand } from "../command-runner.js";
 
-export function listAndroidAvds(): string[] {
-  const avdListRaw = runCommand("emulator", ["-list-avds"]);
+export function parseAndroidAvdList(avdListRaw: string): string[] {
   return avdListRaw
     .split("\n")
     .map((item) => item.trim())
     .filter(Boolean);
+}
+
+export function listAndroidAvds(): string[] {
+  const avdListRaw = runCommand("emulator", ["-list-avds"]);
+  return parseAndroidAvdList(avdListRaw);
 }
 
 export function launchAndroidEmulator(avdName: string): void {
