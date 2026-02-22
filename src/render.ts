@@ -75,14 +75,7 @@ function renderHeader(): void {
 }
 
 function renderFooterStatus(): void {
-  const isFilterScreen = appState.screen === "ios" || appState.screen === "android";
   process.stdout.write("\n");
-
-  if (appState.filterActive && isFilterScreen) {
-    process.stdout.write(`${paint("Filter", "yellow")}: ${paint(getCurrentFilterQuery() || "(type to filter)", "yellow")}\n`);
-  } else {
-    process.stdout.write(`${paint("Status", "yellow")}: ${appState.statusMessage}\n`);
-  }
 
   const keys: string[] = [];
   if (appState.screen === "main") {
@@ -160,13 +153,17 @@ export function render(): void {
   } else if (appState.screen === "ios") {
     const visibleIos = getVisibleIosSimulators();
     const iosGroups = getVisibleIosSimulatorGroups();
+    const iosSummary =
+      visibleIos.length === 0
+        ? "0 visible"
+        : `${visibleIos.length} visible${appState.filterActive ? ` | filter: ${getCurrentFilterQuery() || "(type)"}` : ""}`;
     if (visibleIos.length === 0) {
       renderSelectableList(
         `${icons.ios} iOS Simulators`,
         ["No iOS simulators match current filter."],
         appState.iosIndex,
         "Press Enter to boot selected simulator.",
-        "0 visible"
+        iosSummary
       );
     } else {
       renderGroupedSelectableList(
@@ -187,19 +184,23 @@ export function render(): void {
         ],
         appState.iosIndex,
         "Press Enter to boot selected simulator.",
-        `${visibleIos.length} visible`
+        iosSummary
       );
     }
   } else if (appState.screen === "android") {
     const visibleAndroid = getVisibleAndroidAvds();
     const androidGroups = getVisibleAndroidAvdGroups();
+    const androidSummary =
+      visibleAndroid.length === 0
+        ? "0 visible"
+        : `${visibleAndroid.length} visible${appState.filterActive ? ` | filter: ${getCurrentFilterQuery() || "(type)"}` : ""}`;
     if (visibleAndroid.length === 0) {
       renderSelectableList(
         `${icons.android} Android Emulators`,
         ["No Android emulators match current filter."],
         appState.androidIndex,
         "Press Enter to launch selected AVD.",
-        "0 visible"
+        androidSummary
       );
     } else {
       renderGroupedSelectableList(
@@ -220,7 +221,7 @@ export function render(): void {
         ],
         appState.androidIndex,
         "Press Enter to launch selected AVD.",
-        `${visibleAndroid.length} visible`
+        androidSummary
       );
     }
   }
