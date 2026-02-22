@@ -78,9 +78,27 @@ function renderFooterStatus(): void {
     process.stdout.write(`${paint("Status", "yellow")}: ${appState.statusMessage}\n`);
   }
 
-  process.stdout.write(
-    `${paint("Keys", "dim")}: ${paint("Up/Down", "cyan")} move · ${paint("Enter", "cyan")} select · ${paint("f", "cyan")} filter · ${paint("Esc/Backspace", "cyan")} back · ${paint("q", "cyan")} quit\n`
-  );
+  const keys: string[] = [];
+  if (appState.screen === "main") {
+    keys.push(`${paint("Up/Down", "cyan")} move`, `${paint("Enter", "cyan")} select`);
+  }
+
+  if (appState.screen === "ios" || appState.screen === "android") {
+    keys.push(`${paint("Up/Down", "cyan")} move`, `${paint("Enter", "cyan")} select`);
+    if (appState.filterActive) {
+      keys.push(`${paint("type", "cyan")} filter text`, `${paint("Backspace", "cyan")} erase`, `${paint("Esc", "cyan")} exit filter`);
+    } else {
+      keys.push(`${paint("f", "cyan")} filter mode`, `${paint("Esc/Backspace", "cyan")} back`);
+    }
+  }
+
+  if (appState.screen === "devices") {
+    keys.push(`${paint("Esc/Backspace", "cyan")} back`);
+  }
+
+  keys.push(`${paint("q", "cyan")} quit`, `${paint("Ctrl+C", "cyan")} quit`);
+
+  process.stdout.write(`${paint("Keys", "dim")}: ${keys.join(" · ")}\n`);
 }
 
 export function render(): void {
