@@ -2,11 +2,54 @@ import { spawn } from "node:child_process";
 
 import { runCommand } from "../command-runner.js";
 
+type CommandRunner = (command: string, args: string[]) => string;
+
 export function parseAndroidAvdList(avdListRaw: string): string[] {
   return avdListRaw
     .split("\n")
     .map((item) => item.trim())
     .filter(Boolean);
+}
+
+export function parseRunningEmulatorSerials(adbDevicesOutput: string): string[] {
+  return adbDevicesOutput
+    .split("\n")
+    .map((line) => line.trim())
+    .filter((line) => /^emulator-\d+\s+device\b/.test(line))
+    .map((line) => line.split(/\s+/)[0])
+    .filter((serial): serial is string => typeof serial === "string" && serial.length > 0);
+}
+
+export function parseAvdNameFromEmulatorOutput(rawOutput: string): string {
+  const line = rawOutput
+    .split("\n")
+    .map((item) => item.trim())
+    .find((item) => item.length > 0 && item.toUpperCase() !== "OK");
+
+  return line ?? "";
+}
+
+export function listBootedAndroidAvds(commandRunner: CommandRunner = runCommand): string[] {
+  try {
+    const devicesOutput = commandRunner("adb", ["devices", "-l"]);
+    const serials = parseRunningEmulatorSerials(devicesOutput);
+    const avdNames: string[] = [];
+
+    serials.forEach((serial) => {
+      try {
+        const nameOutput = commandRunner("adb", ["-s", serial, "emu", "avd", "name"]);
+        const avdName = parseAvdNameFromEmulatorOutput(nameOutput);
+        if (avdName.length > 0 && avdName.toLowerCase() !== "unknown") {
+          avdNames.push(avdName);
+        }
+      } catch {
+      }
+    });
+
+    return [...new Set(avdNames)];
+  } catch {
+    return [];
+  }
 }
 
 export function listAndroidAvds(): string[] {

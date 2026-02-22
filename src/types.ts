@@ -43,5 +43,8 @@ export type AppState = {
   busy: boolean;
   iosSimulators: IosSimulator[];
   androidAvds: string[];
+  bootedAndroidAvdNames: string[];
+  recentIosUdids: string[];
+  recentAndroidAvdNames: string[];
   activeDevices: ActiveDevices;
 };

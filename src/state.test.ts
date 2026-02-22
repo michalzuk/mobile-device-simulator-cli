@@ -6,7 +6,9 @@ import {
   backToMainMenu,
   clampIndex,
   getCurrentFilterQuery,
+  getVisibleAndroidAvdGroups,
   getVisibleAndroidAvds,
+  getVisibleIosSimulatorGroups,
   getVisibleIosSimulators,
   normalizeSelection,
   setCurrentFilterQuery
@@ -24,6 +26,9 @@ const defaultState = {
   busy: false,
   iosSimulators: [],
   androidAvds: [],
+  bootedAndroidAvdNames: [],
+  recentIosUdids: [],
+  recentAndroidAvdNames: [],
   activeDevices: {
     ios: "",
     android: ""
@@ -42,6 +47,9 @@ function resetAppState(): void {
   appState.busy = defaultState.busy;
   appState.iosSimulators = [...defaultState.iosSimulators];
   appState.androidAvds = [...defaultState.androidAvds];
+  appState.bootedAndroidAvdNames = [...defaultState.bootedAndroidAvdNames];
+  appState.recentIosUdids = [...defaultState.recentIosUdids];
+  appState.recentAndroidAvdNames = [...defaultState.recentAndroidAvdNames];
   appState.activeDevices = {
     ios: defaultState.activeDevices.ios,
     android: defaultState.activeDevices.android
@@ -77,11 +85,45 @@ describe("state", () => {
     assert.equal(byName[0]?.name, "iPhone 15");
   });
 
+  test("getVisibleIosSimulatorGroups prioritizes booted then recent IDs", () => {
+    appState.iosSimulators = [
+      { udid: "1", name: "iPhone 15", runtime: "iOS-17-5", state: "Shutdown" },
+      { udid: "2", name: "iPhone 16", runtime: "iOS-18-0", state: "Booted" },
+      { udid: "3", name: "iPhone SE", runtime: "iOS-17-0", state: "Shutdown" }
+    ];
+    appState.recentIosUdids = ["2", "3"];
+
+    const groups = getVisibleIosSimulatorGroups();
+    assert.deepEqual(
+      groups.booted.map((item) => item.udid),
+      ["2"]
+    );
+    assert.deepEqual(
+      groups.recent.map((item) => item.udid),
+      ["3"]
+    );
+    assert.deepEqual(
+      groups.others.map((item) => item.udid),
+      ["1"]
+    );
+  });
+
   test("getVisibleAndroidAvds filters case-insensitively", () => {
     appState.androidAvds = ["Pixel_8_API_35", "Nexus_5X_API_28"];
     appState.androidFilterQuery = "pixel";
 
     assert.deepEqual(getVisibleAndroidAvds(), ["Pixel_8_API_35"]);
+  });
+
+  test("getVisibleAndroidAvdGroups prioritizes booted then recent names", () => {
+    appState.androidAvds = ["Pixel_8_API_35", "Nexus_5X_API_28", "Pixel_7_API_34"];
+    appState.bootedAndroidAvdNames = ["Nexus_5X_API_28"];
+    appState.recentAndroidAvdNames = ["Pixel_7_API_34"];
+
+    const groups = getVisibleAndroidAvdGroups();
+    assert.deepEqual(groups.booted, ["Nexus_5X_API_28"]);
+    assert.deepEqual(groups.recent, ["Pixel_7_API_34"]);
+    assert.deepEqual(groups.others, ["Pixel_8_API_35"]);
   });
 
   test("normalizeSelection keeps selection within visible list bounds", () => {

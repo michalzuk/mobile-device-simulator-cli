@@ -2,8 +2,9 @@ import readline from "node:readline";
 
 import { mainMenuItems } from "./constants.js";
 import { getActiveDevices } from "./devices/active.js";
-import { launchAndroidEmulator, listAndroidAvds } from "./devices/android.js";
+import { launchAndroidEmulator, listAndroidAvds, listBootedAndroidAvds } from "./devices/android.js";
 import { launchIosSimulator, listIosSimulators } from "./devices/ios.js";
+import { loadDeviceHistory, pushRecentAndroidAvdName, pushRecentIosUdid, saveDeviceHistory } from "./history.js";
 import { render } from "./render.js";
 import {
   appState,
@@ -41,6 +42,13 @@ function runBusyAction(action: () => void): void {
   }
 }
 
+function persistRecentHistory(): void {
+  saveDeviceHistory({
+    recentIosUdids: appState.recentIosUdids,
+    recentAndroidAvdNames: appState.recentAndroidAvdNames
+  });
+}
+
 function handleEnter(): void {
   if (appState.screen === "main") {
     const selected = mainMenuItems[appState.mainIndex];
@@ -70,6 +78,7 @@ function handleEnter(): void {
           return;
         }
         appState.androidAvds = avds;
+        appState.bootedAndroidAvdNames = listBootedAndroidAvds();
         appState.androidIndex = 0;
         appState.androidFilterQuery = "";
         appState.filterActive = false;
@@ -107,6 +116,8 @@ function handleEnter(): void {
 
     runBusyAction(() => {
       launchIosSimulator(selectedDevice.udid);
+      appState.recentIosUdids = pushRecentIosUdid(selectedDevice.udid, appState.recentIosUdids);
+      persistRecentHistory();
       backToMainMenu(`iOS Simulator launch requested for ${selectedDevice.name}.`);
     });
     return;
@@ -127,6 +138,8 @@ function handleEnter(): void {
 
     runBusyAction(() => {
       launchAndroidEmulator(selectedAvd);
+      appState.recentAndroidAvdNames = pushRecentAndroidAvdName(selectedAvd, appState.recentAndroidAvdNames);
+      persistRecentHistory();
       backToMainMenu(`Android emulator launch requested for ${selectedAvd}.`);
     });
   }
@@ -208,6 +221,9 @@ export function startCli(): void {
   }
 
   readline.emitKeypressEvents(process.stdin);
+  const history = loadDeviceHistory();
+  appState.recentIosUdids = history.recentIosUdids;
+  appState.recentAndroidAvdNames = history.recentAndroidAvdNames;
   process.stdin.setRawMode(true);
   process.stdout.write("\x1b[?25l");
 

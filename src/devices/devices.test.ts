@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { describe, test } from "node:test";
 
 import { getActiveDevices, toDeviceStatus } from "./active.js";
-import { parseAndroidAvdList } from "./android.js";
+import { listBootedAndroidAvds, parseAndroidAvdList, parseAvdNameFromEmulatorOutput, parseRunningEmulatorSerials } from "./android.js";
 import { toIosSimulators } from "./ios.js";
 
 describe("devices parsing", () => {
@@ -37,6 +37,45 @@ describe("devices parsing", () => {
   test("toDeviceStatus falls back when output is empty", () => {
     assert.equal(toDeviceStatus("", "No devices"), "No devices");
     assert.equal(toDeviceStatus("booted", "No devices"), "booted");
+  });
+
+  test("parseRunningEmulatorSerials returns only emulator serials", () => {
+    const output = [
+      "List of devices attached",
+      "emulator-5554 device product:sdk_gphone_x86_64",
+      "R5CR30ABCDE device product:dm3q",
+      "emulator-5556 offline"
+    ].join("\n");
+
+    assert.deepEqual(parseRunningEmulatorSerials(output), ["emulator-5554"]);
+  });
+
+  test("parseAvdNameFromEmulatorOutput handles trailing OK line", () => {
+    assert.equal(parseAvdNameFromEmulatorOutput("Pixel_8_API_35\nOK\n"), "Pixel_8_API_35");
+  });
+
+  test("listBootedAndroidAvds resolves booted emulator names", () => {
+    const commandRunner = (_command: string, args: string[]): string => {
+      if (args[0] === "devices") {
+        return [
+          "List of devices attached",
+          "emulator-5554 device product:sdk_gphone_x86_64",
+          "emulator-5556 device product:sdk_gphone_x86_64"
+        ].join("\n");
+      }
+
+      if (args[0] === "-s" && args[1] === "emulator-5554") {
+        return "Pixel_8_API_35\nOK\n";
+      }
+
+      if (args[0] === "-s" && args[1] === "emulator-5556") {
+        return "Pixel_7_API_34\nOK\n";
+      }
+
+      return "";
+    };
+
+    assert.deepEqual(listBootedAndroidAvds(commandRunner), ["Pixel_8_API_35", "Pixel_7_API_34"]);
   });
 });
 
