@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, test } from "node:test";
 
-import { getActiveDevices, toDeviceStatus } from "./active.js";
+import { formatBootedIosDevices, getActiveDevices, toDeviceStatus } from "./active.js";
 import { listBootedAndroidAvds, parseAndroidAvdList, parseAvdNameFromEmulatorOutput, parseRunningEmulatorSerials } from "./android.js";
 import { toIosSimulators } from "./ios.js";
 
@@ -37,6 +37,22 @@ describe("devices parsing", () => {
   test("toDeviceStatus falls back when output is empty", () => {
     assert.equal(toDeviceStatus("", "No devices"), "No devices");
     assert.equal(toDeviceStatus("booted", "No devices"), "booted");
+  });
+
+  test("formatBootedIosDevices returns inline runtime info", () => {
+    const json = JSON.stringify({
+      devices: {
+        "com.apple.CoreSimulator.SimRuntime.iOS-18-0": [
+          {
+            udid: "abc",
+            name: "iPhone 16",
+            state: "Booted"
+          }
+        ]
+      }
+    });
+
+    assert.equal(formatBootedIosDevices(json), "iPhone 16 (iOS-18-0) - Booted");
   });
 
   test("parseRunningEmulatorSerials returns only emulator serials", () => {
@@ -83,7 +99,17 @@ describe("active devices", () => {
   test("getActiveDevices returns parsed outputs when commands succeed", () => {
     const commandRunner = (command: string): string => {
       if (command === "xcrun") {
-        return "iPhone 16 (Booted)";
+        return JSON.stringify({
+          devices: {
+            "com.apple.CoreSimulator.SimRuntime.iOS-18-0": [
+              {
+                udid: "abc",
+                name: "iPhone 16",
+                state: "Booted"
+              }
+            ]
+          }
+        });
       }
       if (command === "adb") {
         return "emulator-5554 device";
@@ -92,7 +118,7 @@ describe("active devices", () => {
     };
 
     assert.deepEqual(getActiveDevices(commandRunner), {
-      ios: "iPhone 16 (Booted)",
+      ios: "iPhone 16 (iOS-18-0) - Booted",
       android: "emulator-5554 device"
     });
   });
