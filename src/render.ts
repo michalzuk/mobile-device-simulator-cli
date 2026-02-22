@@ -30,7 +30,9 @@ function renderSelectableList(title: string, rows: string[], selectedIndex: numb
     const rowText = index === selectedIndex ? paint(row, "green") : row;
     process.stdout.write(`${marker} ${rowText}\n`);
   });
-  process.stdout.write(`\n${paint(hint, "dim")}\n`);
+  if (hint.trim().length > 0) {
+    process.stdout.write(`\n${paint(hint, "dim")}\n`);
+  }
 }
 
 function renderGroupedSelectableList(
@@ -59,7 +61,9 @@ function renderGroupedSelectableList(
     process.stdout.write("\n");
   });
 
-  process.stdout.write(`${paint(hint, "dim")}\n`);
+  if (hint.trim().length > 0) {
+    process.stdout.write(`${paint(hint, "dim")}\n`);
+  }
 }
 
 function renderHeader(): void {
@@ -69,8 +73,7 @@ function renderHeader(): void {
 
 function renderFooterStatus(): void {
   const isFilterScreen = appState.screen === "ios" || appState.screen === "android";
-  const mode = appState.busy ? paint("Working", "yellow") : paint("Ready", "green");
-  process.stdout.write(`\n${paint("Mode", "dim")}: ${mode} · ${paint("Screen", "dim")}: ${paint(appState.screen, "magenta")}\n`);
+  process.stdout.write("\n");
 
   if (appState.filterActive && isFilterScreen) {
     process.stdout.write(`${paint("Filter", "yellow")}: ${paint(getCurrentFilterQuery() || "(type to filter)", "yellow")}\n`);
@@ -110,7 +113,7 @@ export function render(): void {
       "Main Menu",
       mainMenuItems.map((item) => `${item.label} - ${item.description}`),
       appState.mainIndex,
-      "Choose a workflow and press Enter.",
+      "",
       `${mainMenuItems.length} actions`
     );
   } else if (appState.screen === "ios") {
