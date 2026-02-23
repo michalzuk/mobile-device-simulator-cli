@@ -31,12 +31,19 @@ function partitionByIds<T>(
 ): { matched: T[]; others: T[] } {
   const idSet = new Set(ids);
   const idRank = new Map(ids.map((id, index) => [id, index]));
+  const matched: T[] = [];
+  const others: T[] = [];
 
-  const matched = items
-    .filter((item) => idSet.has(getId(item)))
-    .sort((a, b) => (idRank.get(getId(a)) ?? Number.MAX_SAFE_INTEGER) - (idRank.get(getId(b)) ?? Number.MAX_SAFE_INTEGER));
+  for (const item of items) {
+    const id = getId(item);
+    if (idSet.has(id)) {
+      matched.push(item);
+    } else {
+      others.push(item);
+    }
+  }
 
-  const others = items.filter((item) => !idSet.has(getId(item)));
+  matched.sort((a, b) => (idRank.get(getId(a)) ?? Number.MAX_SAFE_INTEGER) - (idRank.get(getId(b)) ?? Number.MAX_SAFE_INTEGER));
   return { matched, others };
 }
 

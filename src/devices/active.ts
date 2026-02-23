@@ -5,6 +5,22 @@ const IOS_FALLBACK = "Unable to read iOS simulator state (xcrun not available)."
 const ANDROID_FALLBACK = "Unable to read Android device state (adb not available).";
 type CommandRunner = (command: string, args: string[]) => string;
 
+function parseSimctlDevicesJson(rawJson: string, context: string): SimctlDevicesResponse {
+  let parsed: unknown;
+
+  try {
+    parsed = JSON.parse(rawJson);
+  } catch (error) {
+    throw new Error(`${context}: invalid JSON (${error instanceof Error ? error.message : String(error)})`);
+  }
+
+  if (!parsed || typeof parsed !== "object" || !("devices" in parsed)) {
+    throw new Error(`${context}: invalid payload (missing devices map)`);
+  }
+
+  return parsed as SimctlDevicesResponse;
+}
+
 export function toDeviceStatus(output: string, emptyMessage: string): string {
   return output.length > 0 ? output : emptyMessage;
 }
@@ -18,7 +34,7 @@ export function formatBootedIosDevices(rawJson: string): string {
 }
 
 export function parseBootedIosSimulators(rawJson: string): IosSimulator[] {
-  const parsed = JSON.parse(rawJson) as SimctlDevicesResponse;
+  const parsed = parseSimctlDevicesJson(rawJson, "Unable to parse booted iOS simulators");
 
   return Object.entries(parsed.devices).flatMap(([runtime, devices]) => {
     const runtimeName = runtime.replace("com.apple.CoreSimulator.SimRuntime.", "");

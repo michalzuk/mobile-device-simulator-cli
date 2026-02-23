@@ -2,16 +2,39 @@
   "name": "mobile-device-simulator-cli",
   "version": "0.1.0",
   "description": "TypeScript CLI to manage iOS and Android simulators",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/michalzuk/mobile-device-simulator-cli.git"
+  },
+  "bugs": {
+    "url": "https://github.com/michalzuk/mobile-device-simulator-cli/issues"
+  },
+  "homepage": "https://github.com/michalzuk/mobile-device-simulator-cli#readme",
   "type": "module",
   "bin": {
-    "mobile-device-simulator": "dist/index.js"
+    "mobile-device-simulator": "dist/index.js",
+    "mobile-device-simulator-cli": "dist/index.js"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
   },
   "scripts": {
-    "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "lint": "npm run typecheck",
+    "clean": "node -e \"import { rmSync } from 'node:fs'; rmSync('dist', { recursive: true, force: true });\"",
+    "build": "npm run clean && tsc",
+    "prepack": "npm run build",
     "start": "node dist/index.js",
     "dev": "tsx src/index.ts",
     "test": "tsx --test \"src/**/*.test.ts\"",
-    "prepare": "lefthook install"
+    "check": "npm run lint && npm run test",
+    "setup:hooks": "lefthook install"
   },
   "keywords": [
     "cli",
