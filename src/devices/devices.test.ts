@@ -1,7 +1,14 @@
 import assert from "node:assert/strict";
 import { describe, test } from "node:test";
 
-import { formatBootedIosDevices, getActiveDevices, toDeviceStatus } from "./active.js";
+import {
+  formatBootedIosDevices,
+  getActiveDevices,
+  getActiveDevicesSnapshot,
+  parseAndroidDeviceLines,
+  parseBootedIosSimulators,
+  toDeviceStatus
+} from "./active.js";
 import {
   listBootedAndroidAvds,
   parseAndroidAvdList,
@@ -59,6 +66,70 @@ describe("devices parsing", () => {
     });
 
     assert.equal(formatBootedIosDevices(json), "iPhone 16 (iOS-18-0) - Booted");
+  });
+
+  test("parseBootedIosSimulators keeps udid for targeting", () => {
+    const json = JSON.stringify({
+      devices: {
+        "com.apple.CoreSimulator.SimRuntime.iOS-18-0": [
+          {
+            udid: "abc",
+            name: "iPhone 16",
+            state: "Booted"
+          }
+        ]
+      }
+    });
+
+    assert.deepEqual(parseBootedIosSimulators(json), [
+      {
+        udid: "abc",
+        name: "iPhone 16",
+        state: "Booted",
+        runtime: "iOS-18-0"
+      }
+    ]);
+  });
+
+  test("parseAndroidDeviceLines keeps only device lines", () => {
+    const output = [
+      "List of devices attached",
+      "emulator-5554 device product:sdk_gphone_x86_64",
+      "R5CR30ABCDE unauthorized",
+      "R5CR30ABCDE device product:dm3q"
+    ].join("\n");
+
+    assert.deepEqual(parseAndroidDeviceLines(output), [
+      "emulator-5554 device product:sdk_gphone_x86_64",
+      "R5CR30ABCDE device product:dm3q"
+    ]);
+  });
+
+  test("getActiveDevicesSnapshot returns both text and structured lists", () => {
+    const commandRunner = (command: string): string => {
+      if (command === "xcrun") {
+        return JSON.stringify({
+          devices: {
+            "com.apple.CoreSimulator.SimRuntime.iOS-18-0": [
+              {
+                udid: "abc",
+                name: "iPhone 16",
+                state: "Booted"
+              }
+            ]
+          }
+        });
+      }
+      if (command === "adb") {
+        return ["List of devices attached", "emulator-5554 device product:sdk_gphone_x86_64"].join("\n");
+      }
+      return "";
+    };
+
+    const snapshot = getActiveDevicesSnapshot(commandRunner);
+    assert.equal(snapshot.activeDevices.ios, "iPhone 16 (iOS-18-0) - Booted");
+    assert.deepEqual(snapshot.iosSimulators.map((device) => device.udid), ["abc"]);
+    assert.deepEqual(snapshot.androidDeviceLines, ["emulator-5554 device product:sdk_gphone_x86_64"]);
   });
 
   test("parseRunningEmulatorSerials returns only emulator serials", () => {

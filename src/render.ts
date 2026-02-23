@@ -2,8 +2,6 @@ import { icons, mainMenuItems, paint } from "./constants.js";
 import {
   appState,
   clampIndex,
-  getActiveAndroidRows,
-  getActiveIosRows,
   getCurrentFilterQuery,
   getVisibleAndroidAvdGroups,
   getVisibleAndroidAvds,
@@ -77,21 +75,79 @@ function renderHeader(): void {
 function renderFooterStatus(): void {
   process.stdout.write("\n");
 
+  if (appState.confirmKill) {
+    if (appState.confirmKill.phase === "confirm") {
+      process.stdout.write(
+        `${paint("Confirm", "yellow")}: ${paint(appState.confirmKill.label, "cyan")} ${paint("(Enter to kill, Esc to cancel)", "dim")}\n`
+      );
+      process.stdout.write(
+        `${paint("Keys", "dim")}: ${paint("Enter", "cyan")} confirm · ${paint("Esc", "cyan")} cancel · ${paint("Ctrl+C", "cyan")} quit\n`
+      );
+      return;
+    }
+
+    process.stdout.write(`${paint("Killing", "yellow")}: ${paint(appState.confirmKill.label, "cyan")} ${paint("(please wait)", "dim")}\n`);
+    process.stdout.write(`${paint("Keys", "dim")}: ${paint("Ctrl+C", "cyan")} quit\n`);
+    return;
+  }
+
+  if (appState.busy) {
+    process.stdout.write(`${paint("Working...", "yellow")}\n`);
+  }
+
+  function segment(keyLabel: string, actionLabel: string, active: boolean): string {
+    if (!active) {
+      return paint(`${keyLabel} ${actionLabel}`, "dim");
+    }
+    return `${paint(keyLabel, "cyan")} ${actionLabel}`;
+  }
+
   const keys: string[] = [];
   if (appState.screen === "main") {
-    keys.push(`${paint("Up/Down", "cyan")} move`, `${paint("Enter", "cyan")} select`);
+    const actionItems = mainMenuItems.filter((item) => item.value !== "exit");
+    const totalRows = actionItems.length + appState.activeIosBooted.length + appState.activeAndroidDeviceLines.length + 1;
+    const selectionIndex = clampIndex(appState.mainIndex, totalRows);
+    const inActions = selectionIndex < actionItems.length;
+    const iosStart = actionItems.length;
+    const iosEnd = iosStart + appState.activeIosBooted.length;
+    const androidStart = iosEnd;
+    const androidEnd = androidStart + appState.activeAndroidDeviceLines.length;
+    const inActiveIos = selectionIndex >= iosStart && selectionIndex < iosEnd;
+    const inActiveAndroid = selectionIndex >= androidStart && selectionIndex < androidEnd;
+    const inExit = selectionIndex === totalRows - 1;
+
+    const canMove = totalRows > 1;
+    const canEnter = inActions || inExit;
+    const serial = inActiveAndroid ? (appState.activeAndroidDeviceLines[selectionIndex - androidStart]?.split(/\s+/)[0] ?? "") : "";
+    const canKill = inActiveIos || (inActiveAndroid && serial.startsWith("emulator-"));
+
+    keys.push(segment("Up/Down", "move", canMove), segment("Enter", "select", canEnter), segment("k", "kill", canKill));
   }
 
   if (appState.screen === "ios" || appState.screen === "android") {
-    keys.push(`${paint("Up/Down", "cyan")} move`, `${paint("Enter", "cyan")} select`);
+    const visibleCount = appState.screen === "ios" ? getVisibleIosSimulators().length : getVisibleAndroidAvds().length;
+    const canMove = visibleCount > 1;
+    const canEnter = visibleCount > 0;
+    const canKill =
+      appState.screen === "ios"
+        ? (() => {
+            const visible = getVisibleIosSimulators();
+            const selected = visible[appState.iosIndex];
+            return selected ? selected.state.toLowerCase() === "booted" : false;
+          })()
+        : false;
+
+    keys.push(segment("Up/Down", "move", canMove), segment("Enter", "select", canEnter));
     if (appState.filterActive) {
-      keys.push(`${paint("type", "cyan")} filter text`, `${paint("Backspace", "cyan")} erase`, `${paint("Esc", "cyan")} exit filter`);
+      keys.push(segment("type", "filter", true), segment("Backspace", "erase/back", true), segment("Esc", "exit filter", true));
     } else {
-      keys.push(`${paint("f", "cyan")} filter mode`, `${paint("Esc/Backspace", "cyan")} back`);
+      keys.push(segment("f", "filter mode", true), segment("Esc/Backspace", "back", true));
     }
+
+    keys.push(segment("k", "kill", canKill));
   }
 
-  keys.push(`${paint("Ctrl+C", "cyan")} quit`);
+  keys.push(segment("Ctrl+C", "quit", true));
 
   process.stdout.write(`${paint("Keys", "dim")}: ${keys.join(" · ")}\n`);
 }
@@ -103,8 +159,8 @@ export function render(): void {
   if (appState.screen === "main") {
     const actionItems = mainMenuItems.filter((item) => item.value !== "exit");
     const exitItem = mainMenuItems.find((item) => item.value === "exit");
-    const iosRows = getActiveIosRows();
-    const androidRows = getActiveAndroidRows();
+    const iosRows = appState.activeIosBooted.map((device) => `${device.name} (${device.runtime}) - ${device.state}`);
+    const androidRows = appState.activeAndroidDeviceLines;
     const totalRows = actionItems.length + iosRows.length + androidRows.length + 1;
     appState.mainIndex = clampIndex(appState.mainIndex, totalRows);
 

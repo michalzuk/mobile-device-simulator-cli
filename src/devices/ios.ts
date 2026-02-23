@@ -28,3 +28,7 @@ export function launchIosSimulator(udid: string): void {
   });
   process.unref();
 }
+
+export function shutdownIosSimulator(udid: string): void {
+  runCommand("xcrun", ["simctl", "shutdown", udid]);
+}

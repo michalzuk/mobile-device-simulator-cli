@@ -1,17 +1,16 @@
 import readline from "node:readline";
 
 import { mainMenuItems } from "./constants.js";
-import { getActiveDevices } from "./devices/active.js";
+import { getActiveDevicesSnapshot } from "./devices/active.js";
 import { launchAndroidEmulator, listAndroidAvds, listBootedAndroidAvds } from "./devices/android.js";
-import { launchIosSimulator, listIosSimulators } from "./devices/ios.js";
+import { killAndroidEmulator } from "./devices/android.js";
+import { launchIosSimulator, listIosSimulators, shutdownIosSimulator } from "./devices/ios.js";
 import { loadDeviceHistory, pushRecentAndroidAvdName, pushRecentIosUdid, saveDeviceHistory } from "./history.js";
 import { render } from "./render.js";
 import {
   appState,
   backToMainMenu,
   clampIndex,
-  getActiveAndroidRows,
-  getActiveIosRows,
   getCurrentFilterQuery,
   getVisibleAndroidAvds,
   getVisibleIosSimulators,
@@ -19,13 +18,26 @@ import {
   setCurrentFilterQuery
 } from "./state.js";
 
+function refreshActiveDevices(): void {
+  const snapshot = getActiveDevicesSnapshot();
+  appState.activeDevices = snapshot.activeDevices;
+  appState.activeIosBooted = snapshot.iosSimulators;
+  appState.activeAndroidDeviceLines = snapshot.androidDeviceLines;
+}
+
+type KillTarget = {
+  platform: "ios" | "android";
+  id: string;
+  label: string;
+};
+
 function getMainSelection():
   | { kind: "action"; action: "launch-ios-simulator" | "launch-android-emulator" }
-  | { kind: "active-ios"; row: string }
-  | { kind: "active-android"; row: string }
+  | { kind: "active-ios"; udid: string; label: string }
+  | { kind: "active-android"; serial: string; label: string }
   | { kind: "exit" } {
   const actionItems = mainMenuItems.filter((item) => item.value !== "exit");
-  const exitIndex = actionItems.length + getActiveIosRows().length + getActiveAndroidRows().length;
+  const exitIndex = actionItems.length + appState.activeIosBooted.length + appState.activeAndroidDeviceLines.length;
 
   if (appState.mainIndex < actionItems.length) {
     const selected = actionItems[appState.mainIndex];
@@ -35,17 +47,26 @@ function getMainSelection():
   }
 
   const iosStart = actionItems.length;
-  const iosRows = getActiveIosRows();
+  const iosRows = appState.activeIosBooted;
   const iosEnd = iosStart + iosRows.length;
   if (appState.mainIndex >= iosStart && appState.mainIndex < iosEnd) {
-    return { kind: "active-ios", row: iosRows[appState.mainIndex - iosStart] ?? "" };
+    const selected = iosRows[appState.mainIndex - iosStart];
+    if (selected) {
+      return {
+        kind: "active-ios",
+        udid: selected.udid,
+        label: `${selected.name} (${selected.runtime}) - ${selected.state}`
+      };
+    }
   }
 
   const androidStart = iosEnd;
-  const androidRows = getActiveAndroidRows();
+  const androidRows = appState.activeAndroidDeviceLines;
   const androidEnd = androidStart + androidRows.length;
   if (appState.mainIndex >= androidStart && appState.mainIndex < androidEnd) {
-    return { kind: "active-android", row: androidRows[appState.mainIndex - androidStart] ?? "" };
+    const line = androidRows[appState.mainIndex - androidStart] ?? "";
+    const serial = line.split(/\s+/)[0] ?? "";
+    return { kind: "active-android", serial, label: line };
   }
 
   if (appState.mainIndex === exitIndex) {
@@ -57,7 +78,60 @@ function getMainSelection():
 
 function getMainSelectableCount(): number {
   const actionItems = mainMenuItems.filter((item) => item.value !== "exit");
-  return actionItems.length + getActiveIosRows().length + getActiveAndroidRows().length + 1;
+  return actionItems.length + appState.activeIosBooted.length + appState.activeAndroidDeviceLines.length + 1;
+}
+
+function getKillTarget(): KillTarget | null {
+  if (appState.screen === "main") {
+    const selection = getMainSelection();
+    if (selection.kind === "active-ios") {
+      return { platform: "ios", id: selection.udid, label: selection.label };
+    }
+    if (selection.kind === "active-android") {
+      if (selection.serial.startsWith("emulator-")) {
+        return { platform: "android", id: selection.serial, label: selection.serial };
+      }
+    }
+    return null;
+  }
+
+  if (appState.screen === "ios") {
+    const visibleIos = getVisibleIosSimulators();
+    const selectedDevice = visibleIos[appState.iosIndex];
+    if (selectedDevice && selectedDevice.state.toLowerCase() === "booted") {
+      return {
+        platform: "ios",
+        id: selectedDevice.udid,
+        label: `${selectedDevice.name} (${selectedDevice.runtime}) - ${selectedDevice.state}`
+      };
+    }
+  }
+
+  return null;
+}
+
+function confirmKill(target: KillTarget): void {
+  appState.confirmKill = { platform: target.platform, id: target.id, label: target.label, phase: "confirm" };
+}
+
+function executeKillConfirmed(): void {
+  const target = appState.confirmKill;
+  if (!target || target.phase !== "confirm") {
+    return;
+  }
+
+  appState.confirmKill = { ...target, phase: "running" };
+
+  runBusyAction(() => {
+    if (target.platform === "ios") {
+      shutdownIosSimulator(target.id);
+    } else {
+      killAndroidEmulator(target.id);
+    }
+    refreshActiveDevices();
+  });
+
+  appState.confirmKill = null;
 }
 
 function moveSelection(step: number): void {
@@ -92,6 +166,11 @@ function persistRecentHistory(): void {
 }
 
 function handleEnter(): void {
+  if (appState.confirmKill) {
+    executeKillConfirmed();
+    return;
+  }
+
   if (appState.screen === "main") {
     const selection = getMainSelection();
 
@@ -131,7 +210,6 @@ function handleEnter(): void {
     }
 
     if (selection.kind === "active-ios" || selection.kind === "active-android") {
-      appState.statusMessage = "Active devices are informational.";
       return;
     }
 
@@ -161,7 +239,7 @@ function handleEnter(): void {
       launchIosSimulator(selectedDevice.udid);
       appState.recentIosUdids = pushRecentIosUdid(selectedDevice.udid, appState.recentIosUdids);
       persistRecentHistory();
-      appState.activeDevices = getActiveDevices();
+      refreshActiveDevices();
       backToMainMenu(`iOS Simulator launch requested for ${selectedDevice.name}.`);
     });
     return;
@@ -184,13 +262,18 @@ function handleEnter(): void {
       launchAndroidEmulator(selectedAvd);
       appState.recentAndroidAvdNames = pushRecentAndroidAvdName(selectedAvd, appState.recentAndroidAvdNames);
       persistRecentHistory();
-      appState.activeDevices = getActiveDevices();
+      refreshActiveDevices();
       backToMainMenu(`Android emulator launch requested for ${selectedAvd}.`);
     });
   }
 }
 
 function handleBack(): void {
+  if (appState.confirmKill) {
+    appState.confirmKill = null;
+    return;
+  }
+
   if (appState.filterActive && (appState.screen === "ios" || appState.screen === "android")) {
     appState.filterActive = false;
     setCurrentFilterQuery("");
@@ -274,13 +357,39 @@ export function startCli(): void {
   process.stdout.write("\x1b[?25l");
 
   runBusyAction(() => {
-    appState.activeDevices = getActiveDevices();
+    refreshActiveDevices();
   });
   render();
 
   process.stdin.on("keypress", (input: string | undefined, key: readline.Key) => {
     if (key.ctrl && key.name === "c") {
       cleanupAndExit(0);
+      return;
+    }
+
+    if (appState.confirmKill) {
+      if (appState.confirmKill.phase === "confirm") {
+        if (key.name === "escape" || key.name === "backspace") {
+          appState.confirmKill = null;
+          render();
+          return;
+        }
+        if (key.name === "return") {
+          executeKillConfirmed();
+          render();
+          return;
+        }
+      }
+
+      return;
+    }
+
+    if (key.name === "k") {
+      const target = getKillTarget();
+      if (target) {
+        confirmKill(target);
+        render();
+      }
       return;
     }
 

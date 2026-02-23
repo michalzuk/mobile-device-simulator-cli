@@ -75,6 +75,10 @@ export function listAndroidAvds(): string[] {
   return parseAndroidAvdList(avdListRaw);
 }
 
+export function killAndroidEmulator(serial: string, commandRunner: CommandRunner = runCommand): void {
+  commandRunner("adb", ["-s", serial, "emu", "kill"]);
+}
+
 export function launchAndroidEmulator(avdName: string): void {
   const process = spawn("emulator", ["-avd", avdName], {
     detached: true,

@@ -31,6 +31,13 @@ export type ActiveDevices = {
   android: string;
 };
 
+export type ConfirmKill = {
+  platform: "ios" | "android";
+  id: string;
+  label: string;
+  phase: "confirm" | "running";
+};
+
 export type AppState = {
   screen: Screen;
   mainIndex: number;
@@ -47,4 +54,7 @@ export type AppState = {
   recentIosUdids: string[];
   recentAndroidAvdNames: string[];
   activeDevices: ActiveDevices;
+  activeIosBooted: IosSimulator[];
+  activeAndroidDeviceLines: string[];
+  confirmKill: ConfirmKill | null;
 };

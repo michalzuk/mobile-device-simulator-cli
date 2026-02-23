@@ -6,8 +6,6 @@ import {
   backToMainMenu,
   clampIndex,
   getCurrentFilterQuery,
-  parseActiveAndroidRows,
-  parseActiveIosRows,
   getVisibleAndroidAvdGroups,
   getVisibleAndroidAvds,
   getVisibleIosSimulatorGroups,
@@ -16,7 +14,7 @@ import {
   setCurrentFilterQuery
 } from "./state.js";
 
-const defaultState = {
+  const defaultState = {
   screen: "main",
   mainIndex: 0,
   iosIndex: 0,
@@ -34,7 +32,10 @@ const defaultState = {
   activeDevices: {
     ios: "",
     android: ""
-  }
+  },
+  activeIosBooted: [],
+  activeAndroidDeviceLines: [],
+  confirmKill: null
 } as const;
 
 function resetAppState(): void {
@@ -56,6 +57,9 @@ function resetAppState(): void {
     ios: defaultState.activeDevices.ios,
     android: defaultState.activeDevices.android
   };
+  appState.activeIosBooted = [...defaultState.activeIosBooted];
+  appState.activeAndroidDeviceLines = [...defaultState.activeAndroidDeviceLines];
+  appState.confirmKill = defaultState.confirmKill;
 }
 
 describe("state", () => {
@@ -173,23 +177,4 @@ describe("state", () => {
     assert.equal(appState.statusMessage, "Ready");
   });
 
-  test("parseActiveIosRows returns empty for fallback messages", () => {
-    assert.deepEqual(parseActiveIosRows("No booted iOS simulators."), []);
-    assert.deepEqual(parseActiveIosRows("Unable to read iOS simulator state (xcrun not available)."), []);
-  });
-
-  test("parseActiveIosRows splits formatted device lines", () => {
-    const text = "iPhone 16 (iOS-18-0) - Booted\n";
-    assert.deepEqual(parseActiveIosRows(text), ["iPhone 16 (iOS-18-0) - Booted"]);
-  });
-
-  test("parseActiveAndroidRows strips header and keeps device lines", () => {
-    const text = [
-      "List of devices attached",
-      "emulator-5554 device product:sdk_gphone_x86_64",
-      "R5CR30ABCDE unauthorized"
-    ].join("\n");
-
-    assert.deepEqual(parseActiveAndroidRows(text), ["emulator-5554 device product:sdk_gphone_x86_64"]);
-  });
 });
