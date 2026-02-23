@@ -9,6 +9,9 @@ import {
   getVisibleIosSimulators
 } from "./state.js";
 
+const ACTIVE_SELECTION_COLOR = "cyan" as const;
+const ANDROID_ACCENT_COLOR = "blue" as const;
+
 function clearScreen(): void {
   process.stdout.write("\x1b[2J\x1b[H");
 }
@@ -27,8 +30,8 @@ function sectionTitle(label: string, summary = ""): void {
 function renderSelectableList(title: string, rows: string[], selectedIndex: number, hint: string, summary: string): void {
   sectionTitle(title, summary);
   rows.forEach((row, index) => {
-    const marker = index === selectedIndex ? paint(">", "green") : paint("•", "dim");
-    const rowText = index === selectedIndex ? paint(row, "green") : row;
+    const marker = index === selectedIndex ? paint(">", ACTIVE_SELECTION_COLOR) : paint("•", "dim");
+    const rowText = index === selectedIndex ? paint(row, ACTIVE_SELECTION_COLOR) : row;
     process.stdout.write(`${marker} ${rowText}\n`);
   });
   if (hint.trim().length > 0) {
@@ -54,8 +57,8 @@ function renderGroupedSelectableList(
     process.stdout.write(`${paint(group.label, "yellow")}\n`);
     group.rows.forEach((row) => {
       const selected = rowIndex === selectedIndex;
-      const marker = selected ? paint(">", "green") : paint("•", "dim");
-      const rowText = selected ? paint(row, "green") : row;
+      const marker = selected ? paint(">", ACTIVE_SELECTION_COLOR) : paint("•", "dim");
+      const rowText = selected ? paint(row, ACTIVE_SELECTION_COLOR) : row;
       process.stdout.write(`${marker} ${rowText}\n`);
       rowIndex += 1;
     });
@@ -167,8 +170,8 @@ export function render(): void {
     sectionTitle("Main Menu", `${actionItems.length + 1} actions`);
     actionItems.forEach((item, index) => {
       const row = `${item.label} - ${item.description}`;
-      const marker = index === appState.mainIndex ? paint(">", "green") : paint("•", "dim");
-      const rowText = index === appState.mainIndex ? paint(row, "green") : row;
+      const marker = index === appState.mainIndex ? paint(">", ACTIVE_SELECTION_COLOR) : paint("•", "dim");
+      const rowText = index === appState.mainIndex ? paint(row, ACTIVE_SELECTION_COLOR) : row;
       process.stdout.write(`${marker} ${rowText}\n`);
     });
 
@@ -181,21 +184,21 @@ export function render(): void {
     } else {
       iosRows.forEach((row, offset) => {
         const index = actionItems.length + offset;
-        const marker = index === appState.mainIndex ? paint(">", "green") : paint("•", "dim");
-        const rowText = index === appState.mainIndex ? paint(row, "green") : row;
+        const marker = index === appState.mainIndex ? paint(">", ACTIVE_SELECTION_COLOR) : paint("•", "dim");
+        const rowText = index === appState.mainIndex ? paint(row, ACTIVE_SELECTION_COLOR) : row;
         process.stdout.write(`${marker} ${rowText}\n`);
       });
     }
 
     process.stdout.write("\n");
-    process.stdout.write(`${paint(`${icons.android} Android`, "green")}\n`);
+    process.stdout.write(`${paint(`${icons.android} Android`, ANDROID_ACCENT_COLOR)}\n`);
     if (androidRows.length === 0) {
       process.stdout.write(`${paint("No connected Android devices.", "dim")}\n`);
     } else {
       androidRows.forEach((row, offset) => {
         const index = actionItems.length + iosRows.length + offset;
-        const marker = index === appState.mainIndex ? paint(">", "green") : paint("•", "dim");
-        const rowText = index === appState.mainIndex ? paint(row, "green") : row;
+        const marker = index === appState.mainIndex ? paint(">", ACTIVE_SELECTION_COLOR) : paint("•", "dim");
+        const rowText = index === appState.mainIndex ? paint(row, ACTIVE_SELECTION_COLOR) : row;
         process.stdout.write(`${marker} ${rowText}\n`);
       });
     }
@@ -203,8 +206,8 @@ export function render(): void {
     process.stdout.write("\n");
     const exitRow = `${exitItem?.label ?? "Exit"} - ${exitItem?.description ?? "Close CLI"}`;
     const exitIndex = actionItems.length + iosRows.length + androidRows.length;
-    const exitMarker = exitIndex === appState.mainIndex ? paint(">", "green") : paint("•", "dim");
-    const exitText = exitIndex === appState.mainIndex ? paint(exitRow, "green") : exitRow;
+    const exitMarker = exitIndex === appState.mainIndex ? paint(">", ACTIVE_SELECTION_COLOR) : paint("•", "dim");
+    const exitText = exitIndex === appState.mainIndex ? paint(exitRow, ACTIVE_SELECTION_COLOR) : exitRow;
     process.stdout.write(`${exitMarker} ${exitText}\n`);
   } else if (appState.screen === "ios") {
     const visibleIos = getVisibleIosSimulators();
