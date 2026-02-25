@@ -105,3 +105,44 @@ export function getActiveDevicesSnapshot(commandRunner: CommandRunner = runComma
 export function getActiveDevices(commandRunner: CommandRunner = runCommand): ActiveDevices {
   return getActiveDevicesSnapshot(commandRunner).activeDevices;
 }
+
+export function areActiveDeviceSnapshotsEqual(a: ActiveDevicesSnapshot, b: ActiveDevicesSnapshot): boolean {
+  if (a.activeDevices.ios !== b.activeDevices.ios || a.activeDevices.android !== b.activeDevices.android) {
+    return false;
+  }
+
+  if (!iosSimulatorsEqual(a.iosSimulators, b.iosSimulators)) {
+    return false;
+  }
+
+  if (!stringArraysEqual(a.androidDeviceLines, b.androidDeviceLines)) {
+    return false;
+  }
+
+  return true;
+}
+
+function iosSimulatorsEqual(a: IosSimulator[], b: IosSimulator[]): boolean {
+  if (a.length !== b.length) {
+    return false;
+  }
+
+  return a.every((simulator, index) => {
+    const other = b[index];
+    return (
+      other !== undefined &&
+      simulator.udid === other.udid &&
+      simulator.name === other.name &&
+      simulator.state === other.state &&
+      simulator.runtime === other.runtime
+    );
+  });
+}
+
+function stringArraysEqual(a: string[], b: string[]): boolean {
+  if (a.length !== b.length) {
+    return false;
+  }
+
+  return a.every((value, index) => value === b[index]);
+}
