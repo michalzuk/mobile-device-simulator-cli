@@ -5,6 +5,7 @@ import {
   formatBootedIosDevices,
   getActiveDevices,
   getActiveDevicesSnapshot,
+  areActiveDeviceSnapshotsEqual,
   parseAndroidDeviceLines,
   parseBootedIosSimulators,
   toDeviceStatus
@@ -193,6 +194,78 @@ describe("devices parsing", () => {
 });
 
 describe("active devices", () => {
+  test("areActiveDeviceSnapshotsEqual returns true for structurally equal snapshots", () => {
+    const baseSnapshot = {
+      activeDevices: {
+        ios: "iPhone 16 (iOS-18-0) - Booted",
+        android: "emulator-5554 device"
+      },
+      iosSimulators: [
+        {
+          udid: "abc",
+          name: "iPhone 16",
+          state: "Booted",
+          runtime: "iOS-18-0"
+        }
+      ],
+      androidDeviceLines: ["emulator-5554 device"]
+    };
+
+    const cloneSnapshot = {
+      activeDevices: {
+        ios: "iPhone 16 (iOS-18-0) - Booted",
+        android: "emulator-5554 device"
+      },
+      iosSimulators: [
+        {
+          udid: "abc",
+          name: "iPhone 16",
+          state: "Booted",
+          runtime: "iOS-18-0"
+        }
+      ],
+      androidDeviceLines: ["emulator-5554 device"]
+    };
+
+    assert.equal(areActiveDeviceSnapshotsEqual(baseSnapshot, cloneSnapshot), true);
+  });
+
+  test("areActiveDeviceSnapshotsEqual detects differences across fields", () => {
+    const baseSnapshot = {
+      activeDevices: {
+        ios: "iPhone 16 (iOS-18-0) - Booted",
+        android: "emulator-5554 device"
+      },
+      iosSimulators: [
+        {
+          udid: "abc",
+          name: "iPhone 16",
+          state: "Booted",
+          runtime: "iOS-18-0"
+        }
+      ],
+      androidDeviceLines: ["emulator-5554 device"]
+    };
+
+    const updatedSnapshot = {
+      activeDevices: {
+        ios: "iPhone 16 (iOS-18-0) - Booted",
+        android: "emulator-5556 device"
+      },
+      iosSimulators: [
+        {
+          udid: "abc",
+          name: "iPhone 16",
+          state: "Booted",
+          runtime: "iOS-18-0"
+        }
+      ],
+      androidDeviceLines: ["emulator-5556 device"]
+    };
+
+    assert.equal(areActiveDeviceSnapshotsEqual(baseSnapshot, updatedSnapshot), false);
+  });
+
   test("getActiveDevices returns parsed outputs when commands succeed", () => {
     const commandRunner = (command: string): string => {
       if (command === "xcrun") {
