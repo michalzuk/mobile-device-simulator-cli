@@ -46,7 +46,7 @@
   "author": "",
   "license": "MIT",
   "engines": {
-    "node": ">=18"
+    "node": ">=24"
   },
   "dependencies": {
     "@inquirer/prompts": "^7.9.0"
